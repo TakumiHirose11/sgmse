@@ -118,10 +118,11 @@ class DiTBlock(nn.Module):
 
     def forward(self, x, c):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
-        # reshape (a,b,c,d) to (a,b,c*d)
-        x = x.reshape(x.shape[0], -1, x.shape[1]) # (B, 256, 4, 4) -> (B, 256, 16)
+        B, H, C, D = x.shape
+        x = x.reshape(B, C*D, H) # (B, 256, C, D) -> (B, C*D, 256)
         x = x + gate_msa.unsqueeze(1) * self.attn(modulate(self.norm1(x), shift_msa, scale_msa))
         x = x + gate_mlp.unsqueeze(1) * self.mlp(modulate(self.norm2(x), shift_mlp, scale_mlp))
-        x = x.reshape(x.shape[0], -1, 4, 4) # (B, 256, 16) -> (B, 256, 4, 4)
+        # reshape (a,b,c*d) to (a,b,c,d)
+        x = x.reshape(B, H, C, D)
         return x
 
